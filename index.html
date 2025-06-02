@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Philosophical Mapping Language - Interactive Display</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        select, input[type="range"] {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        select:focus, input[type="range"]:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .display-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .panel {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .panel:hover {
+            transform: translateY(-5px);
+        }
+        
+        .panel h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .network-viz {
+            min-height: 400px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            background: #fafafa;
+            position: relative;
+        }
+        
+        .consensus-matrix {
+            overflow-x: auto;
+        }
+        
+        .consensus-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .consensus-table th,
+        .consensus-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .consensus-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .consensus-table td {
+            background: white;
+        }
+        
+        .strength-high { background-color: #d4edda !important; }
+        .strength-medium { background-color: #fff3cd !important; }
+        .strength-low { background-color: #f8d7da !important; }
+        
+        .confidence-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcf7f);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .mapping-details {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .mapping-details h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .mapping-details p {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .concept-tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin: 2px;
+        }
+        
+        .ai-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .ai-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .ai-card h5 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .uncertainty-indicator {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .uncertainty-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6bcf7f, #ffd93d, #ff6b6b);
+            border-radius: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .display-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .ai-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Philosophical Mapping Language</h1>
+            <p>Interactive exploration of cross-cultural philosophical connections</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="viewMode">Display Mode:</label>
+                <select id="viewMode" onchange="changeView()">
+                    <option value="consensus">Consensus View</option>
+                    <option value="comparative">Comparative Matrix</option>
+                    <option value="network">Network Graph</option>
+                    <option value="uncertainty">Uncertainty Analysis</option>
+                </select>
+                
+                <label for="strengthFilter">Min Alignment Strength:</label>
+                <input type="range" id="strengthFilter" min="0" max="1" step="0.1" value="0.7" oninput="updateFilter()">
+                <span id="strengthValue">0.7</span>
+                
+                <label for="philosopherFilter">Philosopher:</label>
+                <select id="philosopherFilter" onchange="updateFilter()">
+                    <option value="all">All Philosophers</option>
+                    <option value="Bergson">Henri Bergson</option>
+                    <option value="Heidegger">Martin Heidegger</option>
+                    <option value="Whitehead">Alfred North Whitehead</option>
+                    <option value="Merleau-Ponty">Maurice Merleau-Ponty</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="display-area">
+            <div class="panel" id="mainDisplay">
+                <h3>Consensus View</h3>
+                <div class="network-viz" id="networkContainer">
+                    <!-- Network visualization will be rendered here -->
+                </div>
+            </div>
+            
+            <div class="panel" id="detailsPanel">
+                <h3>Mapping Details</h3>
+                <div id="mappingDetails">
+                    <p>Select a mapping to view detailed analysis</p>
+                </div>
+            </div>
+            
+            <div class="panel full-width" id="aiComparisonPanel">
+                <h3>Multi-AI Consensus Analysis</h3>
+                <div class="ai-comparison" id="aiComparison">
+                    <!-- AI comparison cards will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample PML data
+        const pmlData = {
+            relationships: [
+                {
+                    translation: { translator: "Arthur Waley", year: 1934 },
+                    resonance: {
+                        philosopher: "Henri Bergson",
+                        ai_consensus: {
+                            claude: { alignment_strength: 0.85, confidence: 0.90, reasoning: "Waley's flowing translation captures Bergson's temporal dynamics" },
+                            gpt4: { alignment_strength: 0.78, confidence: 0.85, reasoning: "Both emphasize process over static being" },
+                            gemini: { alignment_strength: 0.82, confidence: 0.88, reasoning: "Parallel critique of mechanistic worldview" }
+                        },
+                        consensus_metrics: {
+                            mean_alignment: 0.82,
+                            confidence_weighted_mean: 0.84,
+                            agreement_level: "high",
+                            concept_overlap: 0.75
+                        },
+                        key_concepts: ["élan vital", "creative evolution", "durée"]
+                    }
+                },
+                {
+                    translation: { translator: "Stephen Mitchell", year: 1988 },
+                    resonance: {
+                        philosopher: "Martin Heidegger",
+                        ai_consensus: {
+                            claude: { alignment_strength: 0.80, confidence: 0.85, reasoning: "Poetic translation resonates with Heidegger's authenticity" },
+                            gpt4: { alignment_strength: 0.75, confidence: 0.80, reasoning: "Both explore being and non-being" },
+                            gemini: { alignment_strength: 0.77, confidence: 0.82, reasoning: "Shared emphasis on dwelling authentically" }
+                        },
+                        consensus_metrics: {
+                            mean_alignment: 0.77,
+                            confidence_weighted_mean: 0.78,
+                            agreement_level: "medium",
+                            concept_overlap: 0.68
+                        },
+                        key_concepts: ["Gelassenheit", "authenticity", "being-toward-death"]
+                    }
+                },
+                {
+                    translation: { translator: "D.C. Lau", year: 1963 },
+                    resonance: {
+                        philosopher: "Alfred North Whitehead",
+                        ai_consensus: {
+                            claude: { alignment_strength: 0.90, confidence: 0.95, reasoning: "Systematic approach mirrors Whitehead's process metaphysics" },
+                            gpt4: { alignment_strength: 0.88, confidence: 0.92, reasoning: "Both emphasize relational ontology" },
+                            gemini: { alignment_strength: 0.89, confidence: 0.90, reasoning: "Shared focus on becoming over being" }
+                        },
+                        consensus_metrics: {
+                            mean_alignment: 0.89,
+                            confidence_weighted_mean: 0.89,
+                            agreement_level: "high",
+                            concept_overlap: 0.85
+                        },
+                        key_concepts: ["actual occasions", "creative advance", "prehension"]
+                    }
+                }
+            ]
+        };
+
+        let currentView = 'consensus';
+        let filteredData = pmlData.relationships;
+
+        function changeView() {
+            currentView = document.getElementById('viewMode').value;
+            renderDisplay();
+        }
+
+        function updateFilter() {
+            const strengthThreshold = parseFloat(document.getElementById('strengthFilter').value);
+            const philosopherFilter = document.getElementById('philosopherFilter').value;
+            
+            document.getElementById('strengthValue').textContent = strengthThreshold.toFixed(1);
+            
+            filteredData = pmlData.relationships.filter(rel => {
+                const meetsStrength = rel.resonance.consensus_metrics.mean_alignment >= strengthThreshold;
+                const meetsPhilosopher = philosopherFilter === 'all' || rel.resonance.philosopher.includes(philosopherFilter);
+                return meetsStrength && meetsPhilosopher;
+            });
+            
+            renderDisplay();
+        }
+
+        function renderDisplay() {
+            const mainDisplay = document.getElementById('mainDisplay');
+            const detailsPanel = document.getElementById('mappingDetails');
+            const aiComparison = document.getElementById('aiComparison');
+            
+            switch(currentView) {
+                case 'consensus':
+                    renderConsensusView(mainDisplay);
+                    break;
+                case 'comparative':
+                    renderComparativeMatrix(mainDisplay);
+                    break;
+                case 'network':
+                    renderNetworkGraph(mainDisplay);
+                    break;
+                case 'uncertainty':
+                    renderUncertaintyView(mainDisplay);
+                    break;
+            }
+            
+            renderAIComparison(aiComparison);
+        }
+
+        function renderConsensusView(container) {
+            container.innerHTML = '<h3>Consensus View</h3>';
+            
+            const table = document.createElement('table');
+            table.className = 'consensus-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Translator</th>
+                        <th>Philosopher</th>
+                        <th>Consensus Strength</th>
+                        <th>Agreement Level</th>
+                        <th>Key Concepts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredData.map(rel => `
+                        <tr onclick="showDetails('${rel.translation.translator}', '${rel.resonance.philosopher}')" style="cursor: pointer;">
+                            <td>${rel.translation.translator} (${rel.translation.year})</td>
+                            <td>${rel.resonance.philosopher}</td>
+                            <td class="${getStrengthClass(rel.resonance.consensus_metrics.mean_alignment)}">
+                                ${rel.resonance.consensus_metrics.mean_alignment.toFixed(2)}
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: ${rel.resonance.consensus_metrics.mean_alignment * 100}%"></div>
+                                </div>
+                            </td>
+                            <td>${rel.resonance.consensus_metrics.agreement_level}</td>
+                            <td>${rel.resonance.key_concepts.map(concept => `<span class="concept-tag">${concept}</span>`).join('')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+            
+            container.appendChild(table);
+        }
+
+        function renderComparativeMatrix(container) {
+            container.innerHTML = '<h3>AI Comparative Matrix</h3>';
+            
+            const aiSystems = ['claude', 'gpt4', 'gemini'];
+            const table = document.createElement('table');
+            table.className = 'consensus-table';
+            
+            let html = `
+                <thead>
+                    <tr>
+                        <th>Mapping</th>
+                        ${aiSystems.map(ai => `<th>${ai.toUpperCase()}</th>`).join('')}
+                        <th>Std Dev</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            filteredData.forEach(rel => {
+                const mapping = `${rel.translation.translator} → ${rel.resonance.philosopher}`;
+                const values = aiSystems.map(ai => rel.resonance.ai_consensus[ai]?.alignment_strength || 0);
+                const stdDev = calculateStdDev(values);
+                
+                html += `
+                    <tr>
+                        <td>${mapping}</td>
+                        ${aiSystems.map(ai => {
+                            const data = rel.resonance.ai_consensus[ai];
+                            return `<td class="${getStrengthClass(data?.alignment_strength || 0)}">
+                                ${data?.alignment_strength.toFixed(2) || 'N/A'}
+                                <div class="uncertainty-indicator">
+                                    <div class="uncertainty-fill" style="width: ${(data?.confidence || 0) * 100}%"></div>
+                                </div>
+                            </td>`;
+                        }).join('')}
+                        <td>${stdDev.toFixed(3)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+            container.appendChild(table);
+        }
+
+        function renderNetworkGraph(container) {
+            container.innerHTML = '<h3>Network Graph</h3><div class="network-viz" id="networkSvg"></div>';
+            
+            // Simple network visualization using D3
+            const svg = d3.select('#networkSvg')
+                .append('svg')
+                .attr('width', '100%')
+                .attr('height', '400px');
+            
+            const width = 600;
+            const height = 400;
+            
+            // Create nodes and links
+            const nodes = [];
+            const links = [];
+            
+            filteredData.forEach((rel, i) => {
+                const translatorNode = { id: `translator-${i}`, type: 'translator', name: rel.translation.translator, x: 100, y: i * 80 + 50 };
+                const philosopherNode = { id: `philosopher-${i}`, type: 'philosopher', name: rel.resonance.philosopher, x: 500, y: i * 80 + 50 };
+                
+                nodes.push(translatorNode, philosopherNode);
+                links.push({
+                    source: translatorNode,
+                    target: philosopherNode,
+                    strength: rel.resonance.consensus_metrics.mean_alignment
+                });
+            });
+            
+            // Draw links
+            svg.selectAll('.link')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y)
+                .attr('stroke', '#667eea')
+                .attr('stroke-width', d => d.strength * 5)
+                .attr('opacity', 0.7);
+            
+            // Draw nodes
+            svg.selectAll('.node')
+                .data(nodes)
+                .enter()
+                .append('circle')
+                .attr('class', 'node')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', 20)
+                .attr('fill', d => d.type === 'translator' ? '#667eea' : '#764ba2');
+            
+            // Add labels
+            svg.selectAll('.label')
+                .data(nodes)
+                .enter()
+                .append('text')
+                .attr('class', 'label')
+                .attr('x', d => d.x)
+                .attr('y', d => d.y - 30)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#333')
+                .attr('font-size', '12px')
+                .text(d => d.name);
+        }
+
+        function renderUncertaintyView(container) {
+            container.innerHTML = '<h3>Uncertainty Analysis</h3>';
+            
+            const analysis = document.createElement('div');
+            analysis.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h4>Confidence Distribution</h4>
+                    <p>Analysis of AI confidence levels across all mappings</p>
+                </div>
+            `;
+            
+            filteredData.forEach(rel => {
+                const mapping = `${rel.translation.translator} → ${rel.resonance.philosopher}`;
+                const uncertaintyDiv = document.createElement('div');
+                uncertaintyDiv.className = 'mapping-details';
+                
+                const aiData = Object.entries(rel.resonance.ai_consensus);
+                const avgConfidence = aiData.reduce((sum, [_, data]) => sum + data.confidence, 0) / aiData.length;
+                const confidenceStdDev = calculateStdDev(aiData.map(([_, data]) => data.confidence));
+                
+                uncertaintyDiv.innerHTML = `
+                    <h4>${mapping}</h4>
+                    <p><strong>Average Confidence:</strong> ${avgConfidence.toFixed(2)}</p>
+                    <p><strong>Confidence Std Dev:</strong> ${confidenceStdDev.toFixed(3)}</p>
+                    <p><strong>Agreement Level:</strong> ${rel.resonance.consensus_metrics.agreement_level}</p>
+                    <div class="uncertainty-indicator">
+                        <div class="uncertainty-fill" style="width: ${avgConfidence * 100}%"></div>
+                    </div>
+                `;
+                
+                analysis.appendChild(uncertaintyDiv);
+            });
+            
+            container.appendChild(analysis);
+        }
+
+        function renderAIComparison(container) {
+            container.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                container.innerHTML = '<p>No mappings match current filters</p>';
+                return;
+            }
+            
+            const selectedMapping = filteredData[0]; // Show first mapping by default
+            const aiData = Object.entries(selectedMapping.resonance.ai_consensus);
+            
+            aiData.forEach(([aiName, data]) => {
+                const card = document.createElement('div');
+                card.className = 'ai-card';
+                card.innerHTML = `
+                    <h5>${aiName.toUpperCase()}</h5>
+                    <p><strong>Alignment:</strong> ${data.alignment_strength.toFixed(2)}</p>
+                    <p><strong>Confidence:</strong> ${data.confidence.toFixed(2)}</p>
+                    <p><strong>Reasoning:</strong> ${data.reasoning}</p>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${data.alignment_strength * 100}%"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function showDetails(translator, philosopher) {
+            const mapping = filteredData.find(rel => 
+                rel.translation.translator === translator && rel.resonance.philosopher === philosopher
+            );
+            
+            if (!mapping) return;
+            
+            const detailsPanel = document.getElementById('mappingDetails');
+            detailsPanel.innerHTML = `
+                <div class="mapping-details">
+                    <h4>${translator} (${mapping.translation.year}) → ${philosopher}</h4>
+                    <p><strong>Consensus Strength:</strong> ${mapping.resonance.consensus_metrics.mean_alignment.toFixed(2)}</p>
+                    <p><strong>Agreement Level:</strong> ${mapping.resonance.consensus_metrics.agreement_level}</p>
+                    <p><strong>Concept Overlap:</strong> ${mapping.resonance.consensus_metrics.concept_overlap.toFixed(2)}</p>
+                    <p><strong>Key Concepts:</strong></p>
+                    <div style="margin: 10px 0;">
+                        ${mapping.resonance.key_concepts.map(concept => `<span class="concept-tag">${concept}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // Update AI comparison to show this specific mapping
+            const aiComparison = document.getElementById('aiComparison');
+            aiComparison.innerHTML = '<h3>AI Analysis - ' + translator + ' → ' + philosopher + '</h3>';
+            
+            const comparisonDiv = document.createElement('div');
+            comparisonDiv.className = 'ai-comparison';
+            
+            Object.entries(mapping.resonance.ai_consensus).forEach(([aiName, data]) => {
+                const card = document.createElement('div');
+                card.className = 'ai-card';
+                card.innerHTML = `
+                    <h5>${aiName.toUpperCase()}</h5>
+                    <p><strong>Alignment:</strong> ${data.alignment_strength.toFixed(2)}</p>
+                    <p><strong>Confidence:</strong> ${data.confidence.toFixed(2)}</p>
+                    <p><strong>Reasoning:</strong> ${data.reasoning}</p>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${data.alignment_strength * 100}%"></div>
+                    </div>
+                `;
+                comparisonDiv.appendChild(card);
+            });
+            
+            aiComparison.appendChild(comparisonDiv);
+        }
+
+        function getStrengthClass(strength) {
+            if (strength >= 0.8) return 'strength-high';
+            if (strength >= 0.6) return 'strength-medium';
+            return 'strength-low';
+        }
+
+        function calculateStdDev(values) {
+            const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+            const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+            const avgSquaredDiff = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+            return Math.sqrt(avgSquaredDiff);
+        }
+
+        // Initialize display
+        renderDisplay();
+    </script>
+</body>
+</html>
